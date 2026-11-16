@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SeeTime · 业务详情独立体验版</title>
+<link rel="stylesheet" href="styles.css?v=pages-6">
+<link rel="stylesheet" href="business-assist.css?v=2">
+<link rel="stylesheet" href="product.css"><link rel="stylesheet" href="stage-detail.css"><link rel="stylesheet" href="stage-preview.css"><link rel="stylesheet" href="business-v8.css"><link rel="icon" href="assets/scenic-ip.png"></head>
+<body class="business-page">
+<svg class="symbol-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+<symbol id="spark" viewBox="0 0 24 24"><path d="m12 3 2.3 6.7L21 12l-6.7 2.3L12 21l-2.3-6.7L3 12l6.7-2.3Z"/></symbol>
+<symbol id="arrow" viewBox="0 0 24 24"><path d="M7 17 17 7M7 7h10v10"/></symbol>
+<symbol id="pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+<symbol id="alert" viewBox="0 0 24 24"><path d="M10.3 3.9 2 18.3A1.8 1.8 0 0 0 3.6 21h16.8a1.8 1.8 0 0 0 1.6-2.7L13.7 3.9a2 2 0 0 0-3.4 0Z M12 9v4M12 17h.01"/></symbol>
+<symbol id="layers" viewBox="0 0 24 24"><path d="m12 3 10 5-10 5L2 8l10-5Zm-10 9 10 5 10-5M2 16l10 5 10-5"/></symbol>
+<symbol id="file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6Zm0 0v6h6M8 13h8M8 17h5"/></symbol>
+<symbol id="clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+<symbol id="check" viewBox="0 0 24 24"><path d="m6 12 4 4 8-8"/></symbol>
+<symbol id="user" viewBox="0 0 24 24"><circle cx="12" cy="7.5" r="3.2"/><path d="M5.5 20v-2a6.5 6.5 0 0 1 13 0v2"/></symbol>
+<symbol id="info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/></symbol>
+</defs></svg>
+<header class="app-header">
+ <a class="brand" href="./" aria-label="SeeTime 景区运营"><span class="brand-word">SeeTime</span><span class="brand-description">景区运营</span></a>
+ <nav class="primary-nav" aria-label="主导航"><a class="nav-item nav-link" href="screen.html">景区运营大屏</a><a class="nav-item nav-link active" href="index.html" aria-current="page">业务处理</a><a class="nav-item nav-link" href="assistant.html">智能助手<span id="assist-unread" aria-label="本页未查看建议"></span></a></nav>
+ <div class="header-tools"><span class="location"><svg class="icon"><use href="#pin"/></svg>九华山景区</span><span class="environment">独立体验版</span><details class="data-note"><summary>数据说明</summary><p>基础台账及预置场景、趋势为样例。提交的图片与说明保存在当前浏览器，清除网站数据后会丢失；不会同步给其他访客并关联反馈记录，图片内容仍需人工核对。通知、模型与身份系统尚未接入；缺失的原始日期和人员不补造。</p></details></div>
+</header>
+<main class="page-shell tracking-layout">
+ <aside class="tracking-list" aria-labelledby="tracking-heading">
+  <div class="tracking-heading"><h2 id="tracking-heading">业务事项</h2><span id="list-total"></span></div>
+  <label for="category-filter">业务类别</label>
+  <select id="category-filter"><option value="">全部类别</option><option>交通运行</option><option>客流安全</option><option>环境服务</option></select>
+  <div id="status-filters" class="status-filters" role="group" aria-label="处理状态"></div>
+  <label for="event-search">搜索事项</label><input id="event-search" type="search" placeholder="输入名称或位置">
+  <p class="list-summary" id="list-summary" role="status"></p>
+  <div class="event-list" id="event-list"></div>
+ </aside>
+ <div class="tracking-detail">
+ <section class="detail-empty" id="empty-detail" hidden><h2>没有符合条件的事项</h2><p>可调整类别、状态或搜索词。</p></section>
+ <div id="selected-detail">
+ <section class="object-header" aria-labelledby="event-title">
+  <div class="breadcrumb"><span>业务处理</span><span class="separator">/</span><span>事项详情</span></div>
+  <div class="object-summary"><h1 id="event-title">入口上游道路拥堵</h1><span class="status"><svg class="icon small"><use href="#alert"/></svg>待安排核查</span><time datetime="2026-11-12T14:20:00+08:00">2026.11.12 14:20</time></div>
+ </section>
+
+ <div id="stage-preview-banner" hidden></div>
+ <section class="workflow" aria-labelledby="workflow-title">
+  <h2 id="workflow-title">处理流程</h2>
+  <ol>
+   <li class="done"><span class="step-dot"><svg class="icon small"><use href="#check"/></svg></span><span class="step-copy"><strong>发现预警</strong><small>14:20</small></span></li>
+   <li class="done"><span class="step-dot"><svg class="icon small"><use href="#check"/></svg></span><span class="step-copy"><strong>分析建议</strong><small>14:24</small></span></li>
+   <li class="current" aria-current="step"><span class="step-dot">3</span><span class="step-copy"><strong>现场核查</strong><small>待安排</small></span></li>
+   <li class=""><span class="step-dot">4</span><span class="step-copy"><strong>处置决策</strong><small>待开始</small></span></li>
+   <li class=""><span class="step-dot">5</span><span class="step-copy"><strong>现场处置</strong><small>待开始</small></span></li>
+   <li class=""><span class="step-dot">6</span><span class="step-copy"><strong>结果复核</strong><small>待开始</small></span></li>
+   <li class=""><span class="step-dot">7</span><span class="step-copy"><strong>归档</strong><small>待开始</small></span></li>
+  </ol>
+ </section>
+ <div class="detail-layout">
+  <article class="decision" aria-label="事件事实、分析建议与记录">
+   <div class="detail-tabs" role="tablist" aria-label="事件信息">
+    <button id="detail-tab" type="button" role="tab" aria-selected="true" aria-controls="detail-panel">事件详情</button>
+    <button id="records-tab" type="button" role="tab" aria-selected="false" aria-controls="records-panel" tabindex="-1">处理记录</button>
+   </div>
+   <div id="detail-panel" role="tabpanel" aria-labelledby="detail-tab" tabindex="0">
+   <section id="stage-detail" aria-label="当前阶段材料"></section>
+   <section class="fact-block" hidden>
+    <div class="section-heading"><h2><svg class="icon"><use href="#file"/></svg>事件事实</h2><button class="text-button" id="source-button" type="button" aria-controls="source-panel" aria-expanded="false">查看来源 <svg class="chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button></div>
+    <p class="fact-summary">入口上游监测点触发道路拥堵预警，尚未收到现场核查反馈。</p>
+    <dl class="fact-grid"><div><dt><svg class="icon"><use href="#pin"/></svg>预警位置</dt><dd>入口上游监测点</dd></div><div><dt><svg class="icon"><use href="#clock"/></svg>触发时间</dt><dd><time datetime="2026-11-12T14:20:00+08:00">14:20</time></dd></div><div><dt><svg class="icon"><use href="#layers"/></svg>信息来源</dt><dd>道路监测记录</dd></div></dl>
+    <p class="scope-note"><svg class="icon small"><use href="#info"/></svg>当前记录仅覆盖该监测点，不能据此判断整条道路或全园情况。</p>
+    <div id="source-panel" class="inline-basis" hidden></div>
+   </section>
+   <section class="other-evidence" id="other-evidence" hidden><h2>现场证据</h2><p></p></section>
+   <section class="assist-strip" id="assist-strip" aria-label="AI 分析与建议">
+    <div class="assist-hint"><span class="ai-logo" role="img" aria-label="AI建议" title="AI建议"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 2.5 12.5 9 19 11.5 12.5 14 10 20.5 7.5 14 1 11.5 7.5 9Z" fill="currentColor"/><path d="m19 2 1.1 2.9L23 6l-2.9 1.1L19 10l-1.1-2.9L15 6l2.9-1.1Z" fill="currentColor"/></svg></span><h3 id="assist-advice"></h3><span id="assist-state" class="assist-state"></span><div id="assist-actions" class="assist-actions"><button id="assist-adopt" type="button">采纳</button><button id="assist-dismiss" type="button">暂不采纳</button></div></div>
+    <div id="assist-content" hidden><p id="assist-reason"></p></div>
+    <div class="assist-footer"><div id="assist-sources" class="assist-sources"></div><button id="assist-toggle" type="button" aria-expanded="false" aria-controls="assist-content">展开</button></div>
+    <p id="assist-feedback" class="assist-feedback" role="status"></p>
+   </section>
+   </div>
+   <section id="records-panel" class="records-panel" role="tabpanel" aria-labelledby="records-tab" tabindex="0" hidden>
+    <h2>处理记录</h2>
+    <ol class="timeline">
+     <li><time datetime="2026-11-12T14:20:00+08:00">14:20</time><div><strong>收到道路拥堵预警</strong><p>入口上游监测点 · 道路监测记录</p></div></li>
+     <li><time datetime="2026-11-12T14:24:00+08:00">14:24</time><div><strong>生成 AI 分析建议</strong><p>建议先核查现场，再决定是否疏导。</p></div></li>
+     <li><span>当前</span><div><strong>等待安排现场核查</strong><p>尚未派发，暂无现场反馈。</p></div></li>
+    </ol>
+   </section>
+  </article>
+  <aside class="action-block" aria-labelledby="action-heading">
+   <div class="section-heading"><h2 id="action-heading"><svg class="icon"><use href="#check"/></svg>当前操作</h2></div>
+   <div class="action-intro"><h3>安排现场核查</h3><span class="not-sent">尚未派发</span><span id="prefill-status" class="prefill-status" hidden>已预填 · 待确认</span></div>
+   <p>指定人员核实排队原因和影响范围，并反馈现场情况。</p>
+   <form id="assignment-form">
+    <div class="action-fields">
+     <label for="assignee"><strong id="assignee-label">现场核查人员</strong> <span class="required">必填</span><select id="assignee" required><option value="">请选择核查人员</option><option>入口巡查组 · 当班人员</option><option>机动巡查组 · 当班人员</option></select></label>
+     <label for="note">补充说明 <span>选填</span><textarea id="note" aria-describedby="suggestion-origin" placeholder="例如：优先核实入口弯道是否受影响" maxlength="200" rows="3"></textarea><small id="suggestion-origin" class="suggestion-origin" hidden></small></label>
+    </div>
+    <button class="button primary" id="review-button" type="submit">预览核查安排 <svg class="icon small"><use href="#arrow"/></svg></button>
+   </form>
+   <aside id="source-drawer" class="source-drawer" hidden aria-labelledby="source-drawer-title" tabindex="-1">
+    <div class="drawer-heading"><div><span>建议来源</span><h3 id="source-drawer-title"></h3></div><button id="close-source-drawer" type="button" aria-label="关闭来源">×</button></div>
+    <p id="source-drawer-meta"></p><div id="source-drawer-body"></div>
+    <details><summary>查看完整样稿记录</summary><p id="source-drawer-full"></p></details>
+    <p class="source-disclaimer">示例来源，仅用于交互演示；非已发布规程或真实工单。</p>
+   </aside>
+   <div class="assistant-box">
+    <button class="text-button assistant-link" type="button" id="assistant-toggle" aria-controls="assistant-panel" aria-expanded="false"><svg class="icon small"><use href="#spark"/></svg><span>问助手</span> <svg class="chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button>
+    <section id="assistant-panel" hidden aria-label="事项助手">
+     <p class="assistant-context" id="assistant-context"></p>
+     <div id="chat-log" class="chat-log" role="log" aria-label="事项对话" tabindex="0"></div>
+     <form id="assistant-form"><label for="assistant-input">向助手提问</label><div><input id="assistant-input" required maxlength="200" placeholder="例如：依据是什么？"><button type="submit">发送</button></div></form>
+    </section>
+   </div>
+   <div class="next-step"><svg class="icon small"><use href="#clock"/></svg><span>收到现场反馈后，再评估是否需要疏导。</span></div>
+  </aside>
+ </div>
+ </div>
+ </div>
+</main>
+<dialog id="preview-dialog" aria-labelledby="dialog-title"><div class="dialog-heading"><h2 id="dialog-title"></h2><button id="close-dialog" aria-label="关闭">×</button></div><div id="dialog-content"></div></dialog>
+<script src="browser-store.js"></script><script src="product-api.js"></script><script src="stage-materials.js"></script><script src="stage-detail.js"></script><script src="business.js"></script>
+</body></html>

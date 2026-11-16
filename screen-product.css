@@ -1,0 +1,40 @@
+.screen-product-nav{height:56px;display:flex;align-items:stretch;gap:8px;padding:0 24px;background:#0b1e2d;border-bottom:1px solid #77bdd840;position:relative;z-index:40}
+.screen-product-nav a{display:flex;align-items:center;justify-content:center;padding:0 22px;min-width:112px;font-size:15px;color:#b8cddb;text-decoration:none;border-bottom:3px solid transparent}
+.screen-product-nav a[aria-current="page"]{color:#a3eff5;background:#65d6e310;border-bottom-color:#65d6e3;font-weight:600}
+.screen-product-nav a:hover{background:#65d6e318;color:#fff}
+.screen-product-nav span{margin-left:auto;align-self:center;font-size:11px;color:#93b0c3}
+.screen{height:calc(100dvh - 56px)}
+.screen-assistant{top:56px;height:calc(100dvh - 56px)}
+.business-jump{display:block;padding:14px 6px;font-size:13px;color:#8eecfa;text-decoration:none}
+@media(max-width:1300px){.screen-product-nav{padding:0 16px}.screen-product-nav a{padding:0 18px}}
+@media(min-width:1800px) and (max-height:1000px){
+ .screen[data-topic="overview"] .panel{padding:16px}
+ .screen[data-topic="overview"] .panel-head{padding-bottom:10px}
+ .screen[data-topic="overview"] .minor-metric{margin-top:10px}
+ .screen[data-topic="overview"] .trend svg,.screen[data-topic="overview"] .chart-scale{height:40px}
+ .screen[data-topic="overview"] .area-list{gap:4px}
+ .screen[data-topic="overview"] .traffic-summary{padding:9px 0}
+ .screen[data-topic="overview"] .parking-row{padding-top:7px}
+ .screen[data-topic="overview"] .parking-row>b{margin-top:5px}
+ .screen[data-topic="overview"] .alert-item{padding:10px 0}
+}
+@media(max-height:1000px){.screen[data-topic="overview"] .alert-item{padding:10px 0}}
+
+@media(min-width:1800px) and (max-height:1000px){.screen[data-topic="overview"] .traffic-summary strong{line-height:30px}.screen[data-topic="overview"] .parking-title{padding-top:6px}}
+.screen[data-topic="overview"] .alerts-panel{flex:0 0 auto}
+.screen[data-topic="overview"] .video-panel{display:flex;flex-direction:column;padding:12px}
+.screen[data-topic="overview"] .video-panel .panel-head{flex:none;padding-bottom:8px;margin-bottom:0}
+.screen[data-topic="overview"] .video-context{flex:none;margin-top:5px}
+.screen[data-topic="overview"] .video-feature{height:auto;flex:1;min-height:48px;margin-top:6px}
+.screen[data-topic="overview"] .video-thumbs{height:36px;min-height:36px;flex:none;margin-top:6px}
+.screen[data-topic="overview"] .video-foot{flex:none;margin-top:6px}
+@media(max-width:1100px),(max-height:719px){.viewport-guard{min-height:calc(100dvh - 56px)}.fit-preview .screen{top:132px}.screen-product-nav span{display:none}}
+@container(max-width:1000px){
+ .screen[data-topic="overview"] .traffic-panel .panel-head h2{font-size:12px;white-space:nowrap}
+ .screen[data-topic="overview"] .traffic-summary{padding:6px 0}
+ .screen[data-topic="overview"] .traffic-summary>div{padding-left:5px}
+ .screen[data-topic="overview"] .traffic-summary>div:first-child{padding-left:0}
+ .screen[data-topic="overview"] .traffic-summary strong{font-size:18px;line-height:26px}
+ .screen[data-topic="overview"] .parking-row{padding-top:5px}
+ .screen[data-topic="overview"] .parking-row>b{margin-top:3px}
+}

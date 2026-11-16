@@ -1,0 +1,89 @@
+.analysis-process {
+  padding: 12px 14px;
+  border: 1px solid #68c7d039;
+  border-radius: 12px;
+  background: #102330;
+  color: #e1f4f8;
+  font-size: 13px;
+}
+.analysis-process summary {
+  cursor: pointer;
+  color: #b3edf0;
+  font-weight: 650;
+}
+.analysis-process summary:focus-visible {
+  outline: 2px solid #83e4ed;
+  outline-offset: 4px;
+}
+.analysis-process > p {
+  margin: 9px 0;
+  color: #a4bac8;
+  font-size: 11px;
+}
+.analysis-process ol {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  margin: 10px 0 0;
+  list-style: none;
+}
+.analysis-process li {
+  display: grid;
+  grid-template-columns: 9px auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+.analysis-process li::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border: 1px solid #8ba3b2;
+  border-radius: 50%;
+}
+.analysis-process li[data-status="done"]::before {
+  background: #77d7cf;
+  border-color: #77d7cf;
+}
+.analysis-process li[data-status="running"]::before {
+  border-color: #42646e;
+  border-top-color: #8ef2ef;
+  animation: analysis-spin .65s linear infinite;
+}
+.analysis-step-state {
+  justify-self: end;
+  color: #a4bac8;
+  text-align: right;
+  overflow-wrap: anywhere;
+  font-size: 11px;
+}
+.analysis-process li[data-status="running"] .analysis-step-state {
+  color: #a6f4f2;
+}
+#refresh-query:disabled {
+  opacity: .7;
+  cursor: progress;
+}
+@keyframes analysis-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .analysis-process li[data-status="running"]::before { animation: none; }
+}
+.analysis-process .analysis-current {
+  padding: 8px 10px;
+  border-left: 2px solid #77d7cf;
+  background: #173341;
+  color: #d7f7f5;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.analysis-process .analysis-task { color: #d4e6ed; line-height: 1.6; }
+.analysis-process .analysis-basis,
+.analysis-process .analysis-gap { line-height: 1.75; overflow-wrap: anywhere; }
+.analysis-process .analysis-gap { color: #e4cba5; }
+.analysis-process li { grid-template-columns: 9px minmax(0, 1fr) minmax(68px, 42%); align-items: start; line-height: 1.7; }
+.analysis-process li::before { margin-top: 7px; }
+.analysis-process li[data-status="cancelled"]::before,
+.analysis-process li[data-status="skipped"]::before { border-color: #8294a2; background: #8294a233; }
+.analysis-process li[data-status="error"]::before { border-color: #efb1a7; background: #efb1a744; }
+.analysis-process[data-status="running"] summary::after { content: ' · 处理中'; font-weight: 400; font-size: 11px; }
