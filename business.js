@@ -199,7 +199,7 @@ function renderItem(item) {
     if(active)step.setAttribute('aria-current','step');else step.removeAttribute('aria-current');
     step.querySelector('.step-dot').textContent=active?i+1:done?'✓':i+1;
     step.querySelector('strong').textContent=i===6&&terminated?'终止留存':road&&i===0?'发现预警':steps[i];
-    step.querySelector('small').textContent=active?'当前阶段':record?(record[0]==='体验材料'?'已记录':record[0].includes('T')?record[0].slice(11,16):record[0]):active?'当前阶段':i===3&&!road?'按业务无需决策':terminated?'未执行':i<current?'未单独记录':'待开始';
+    step.querySelector('small').textContent=active?'当前阶段':record?(i===1&&/更新/.test(record[1])?'持续更新':record[0]==='体验材料'?'已记录':record[0].includes('T')?record[0].slice(11,16):record[0]):active?'当前阶段':i===3&&!road?'按业务无需决策':terminated?'未执行':i<current?'未单独记录':'待开始';
   });
   find('.fact-summary').textContent = item.summary;
   const facts = all('.fact-grid dd');

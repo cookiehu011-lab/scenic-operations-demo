@@ -55,3 +55,8 @@ html,body{height:100%;overflow:hidden}.assistant-shell{height:calc(100dvh - 72px
 .conversation-header h2{overflow-wrap:anywhere}
 
 .history-list .history-time{display:block;margin-top:6px;font-size:11px;line-height:1.4;color:#8290a6}
+
+/* Keep multi-event answers readable and distinguish saved snapshots. */
+.answer-lead{white-space:pre-line;overflow-wrap:anywhere}
+.answer-time{margin-left:auto;color:#7b879d;font-size:12px;font-weight:400}
+.answer-snapshot-note{padding:10px 14px;background:#f5f7fc;border-left:3px solid #c4cee8;border-radius:4px;color:#637089;font-size:13px;line-height:1.7}

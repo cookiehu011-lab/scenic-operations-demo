@@ -9,6 +9,12 @@
   rail:{focus:['处理部位是否对应异常护栏','检修记录与残余风险','通行限制是否明确'],report:'百岁宫步道转弯段护栏有松动迹象，位置和通行影响待核查。',verify:'巡查人员说明：转弯段单段护栏有松动，现场已提示绕行；损坏程度仍需设施人员判断。',task:'安排设施人员检查并处理对应护栏，记录处理部位、残余风险及通行限制。',feedback:'设施人员说明：已处理上报的松动部位，提交文字检修说明；通行条件待有权人员核对。',check:'核对记录说明：本次处理范围与检修说明已核对，使用限制按现场记录保留；工单结束不等于结构安全验收或自动开放。'},
   clean:{focus:['桶体满溢是否消除','周边地面是否仍有残留','桶点是否可正常使用'],report:'游客中心东侧休息区垃圾桶满溢，桶体和周边散落范围待核实。',verify:'巡查人员说明：该桶点已满溢，桶旁有散落垃圾；核查仅覆盖东侧休息区该点位。',task:'安排处理该桶点桶内垃圾及周边散落，反馈清运内容、残留和使用情况。',feedback:'保洁人员说明：已清运桶内垃圾并清扫周边，提交文字完成说明；尚待独立核对桶体、地面和使用情况。',check:'复核记录说明：已核对该桶点桶体、周边地面和使用情况，本次清运事项结束；结论限该点位。'}
  };
+ const initialRecordMaterials={
+  road:{phase:'verify',names:['入口上游点位范围说明','排队车辆观测表','现场核查范围与待查问题']},
+  rail:{phase:'verify',names:['异常部位位置说明','护栏核查材料清单','连接部位与通行检查要点']},
+  cable:{phase:'feedback',names:['候乘入口处置范围','分段放行前后人数记录','待反馈的现场范围']},
+  clean:{phase:'review',names:['保洁完成反馈摘要','桶点复核检查表']}
+ };
  const material=(name,text,source,time,kind)=>({name,text:String(text||'未登记具体内容'),source:source||'本地记录',time:time||'未单独记录时间',kind});
  function applicable(item){return phases.filter(p=>p!=='decision'||(item.businessType||item.id)==='road')}
  function get(item,{preview=false,phase=item.phase}={}){
@@ -55,6 +61,12 @@
     if(ended){const documents=item.recordMeta?.[records.indexOf(ended)]?.materials;if(documents?.length){for(const document of documents)add(document.name,document.text,document.source,ended[0],'closure')}else add('结束记录',ended[2],'本地处理记录',ended[0],'closure')}
     if(resolution==='正常完成'&&feedback)add('结束前处置反馈',feedback.text+'；依据：'+feedback.evidence,feedback.source||'原有反馈记录',feedback.source&&feedback.time?'登记时间：'+feedback.time:null,'feedback');
     if(resolution!=='正常完成'&&latestVerified)add('结束依据：核查反馈',latestVerified.text+'；依据：'+latestVerified.evidence,latestVerified.source,latestVerified.time?'登记时间：'+latestVerified.time:null,'verification');
+   }
+  }
+  const initialMaterials=initialRecordMaterials[item.id];
+  if(!preview&&item.version===1&&initialMaterials?.phase===phase){
+   for(const row of item.processRecords||[])for(const document of row.materials||[]){
+    if(initialMaterials.names.includes(document.name))add(document.name,document.text,document.source,row.time,'stage-record');
    }
   }
   if(preview){
