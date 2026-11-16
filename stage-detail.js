@@ -52,7 +52,7 @@
  function phaseFacts(item,phase){
   const original=item.originalSnapshot||{},feedback=item.feedback?.at(-1),verified=item.verificationFeedback?.filter(row=>item.verificationAssignment&&row.assignmentVersion===item.verificationAssignment.version).at(-1),records=item.records||[];
   let headline=item.summary,description='';
-  if(phase==='verify'){headline=original.summary||item.summary;description=item.id==='road'?'先核实排队原因及入口通行情况。':''}
+  if(phase==='verify'){headline=item.decision?.approved===false?'处置方案已退回，等待重新核查':original.summary||item.summary;description=item.decision?.approved===false?item.decision.note:(item.businessType||item.id)==='road'?'先核实排队原因及入口通行情况。':''}
   if(phase==='verify_feedback'){headline='现场核查已安排，等待核查反馈';description=original.summary||''}
   if(phase==='decision'){headline='现场核查已完成，等待处置决策';description=verified?.text||original.summary||''}
   if(phase==='assign'){headline=item.decision?.approved?'处置方案已确认，等待安排责任组':'问题已核实，等待安排处置责任';description=verified?.text||original.summary||''}

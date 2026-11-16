@@ -486,7 +486,9 @@ function renderActions(){
   note.value=state.verificationText||'';evidence.value=state.verificationEvidence||'';
   note.oninput=()=>{state.verificationText=note.value;persistDraft()};evidence.oninput=()=>{state.verificationEvidence=evidence.value;persistDraft()};
   const outcome=field('核查结果','select',[['valid','确认有效，进入后续办理'],['false','误报，终止留存'],['duplicate','重复，关联原事项']]);outcome.value=state.verificationOutcome||'valid';
-  const target=field('关联原事项','select',[['','请选择原事项'],...items.filter(x=>x.id!==item.id&&!x.completed&&!x.duplicateOf).map(x=>[x.id,x.title])]);target.value=state.verificationTarget||'';target.parentElement.hidden=outcome.value!=='duplicate';
+  const candidates=items.filter(x=>x.id!==item.id&&!x.completed&&!x.duplicateOf&&(x.businessType||x.id)===(item.businessType||item.id));
+  const target=field('关联原事项','select',[['',candidates.length?'请选择原事项':'暂无可关联的同类主事项'],...candidates.map(x=>[x.id,x.title+' · '+x.location])]);target.value=state.verificationTarget||'';target.parentElement.hidden=outcome.value!=='duplicate';
+  target.parentElement.append(element('p',candidates.length?'请核对位置与核查材料，确认属于同一事件后关联。':'暂无未结束的同类主事项。请先核对原事项；当前仍保留在核查阶段。','product-record-note'));
   outcome.onchange=()=>{state.verificationOutcome=outcome.value;target.parentElement.hidden=outcome.value!=='duplicate';persistDraft()};target.onchange=()=>{state.verificationTarget=target.value;persistDraft()};
   command('保存核查反馈','verify_feedback',()=>({text:note.value,evidence:evidence.value,outcome:outcome.value,targetId:target.value}),true);
  }else if(item.phase==='decision'){
