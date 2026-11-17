@@ -32,10 +32,23 @@
   return {capturedAt:SNAPSHOT.capturedAt,areas:rows,totalPeople:rows.reduce((n,row)=>n+row.people,0),
    traffic:areas.length?null:SNAPSHOT.traffic,parking:areas.length?null:SNAPSHOT.parking};
  }
+ function itemTimeline(item){
+  const rows=[...(item.records||[]).filter(row=>row[0]!=='当前').map(row=>({time:row[0],title:row[1],text:row[2],kind:/AI分析建议/.test(row[1])?'建议':'处理记录',materials:[],attachments:[]})),...(item.processRecords||[]).map(row=>({...row,kind:'现场记录'}))];
+  const minutes=value=>{const match=String(value||'').match(/(?:T|^)(\d{1,2}):(\d{2})/);return match?Number(match[1])*60+Number(match[2]):0};
+  return rows.sort((a,b)=>minutes(a.time)-minutes(b.time));
+ }
+ function observationSeries(item){
+  const values=new Map();
+  for(const record of item.processRecords||[])for(const material of record.materials||[]){
+   for(const match of String(material.text||'').matchAll(/(\d{1,2}:\d{2})\s*[：:]\s*(\d+)\s*(辆|人)/g))values.set(match[1],{time:match[1],value:Number(match[2]),unit:match[3]});
+  }
+  return [...values.values()].sort((a,b)=>a.time.localeCompare(b.time));
+ }
+ const latestUpdated=rows=>rows.map(row=>row.updatedAt).filter(Boolean).sort().at(-1)||null;
  function eventCard(item){
-  const last=item.records.filter(row=>row[0]!=='当前').at(-1);
-  return {...pick(item,['id','title','location','phase','resolution','version','owner','action','waitingFor','next']),
-   site:siteOf(item),status:PHASES[item.phase],latest:last?.[1]||'',latestDetail:last?.[2]||'',nextAction:item.phase==='closed'?'查看归档记录':item.next};
+  const timeline=itemTimeline(item),last=timeline.at(-1);
+  return {...pick(item,['id','title','location','phase','resolution','version','owner','action','waitingFor','next','createdAt','updatedAt']),
+   site:siteOf(item),status:PHASES[item.phase],latest:last?.title||'',latestDetail:last?.text||'',nextAction:item.phase==='closed'?'查看归档记录':item.next,timeline};
  }
  function operationsData(rows,areas,weekly){
   const snapshot=snapshotFor(areas);
@@ -48,7 +61,7 @@
    else if(item.resolution==='误报终止')outcomes.false++;
    else if(item.resolution==='重复合并')outcomes.duplicate++;
   }
-  return {period:WEEK,periodLabel:WEEK_LABEL,weekly:{eventCount:rows.length,areas:counts,outcomes},snapshot};
+  return {period:WEEK,periodLabel:WEEK_LABEL,weekly:{eventCount:rows.length,areas:counts,outcomes},snapshot,currentAsOf:latestUpdated(rows)};
  }
  function decorate(item){
   item.originalSnapshot??=clone(pick(item,['summary','evidence','advice','reason','action','flag','task','next','progress','records']));
@@ -115,7 +128,12 @@
   if(kind==='session.message')return message(s,p);
   if(kind==='report.generate')return report(s,p);
   if(kind==='report.edit'){
-   const row=find(s.reports,p.id);version(row,p);const content=text(p,'content');row.history.push(clone(pick(row,['version','content','updatedAt','sources'])));Object.assign(row,{content,version:row.version+1,updatedAt:now()});return {report:row,reportId:row.id};
+   const row=find(s.reports,p.id);version(row,p);const content=text(p,'content'),nextVersion=row.version+1,sources=p.sources??row.sources;
+   require(Array.isArray(sources),'报告来源格式无效');row.history.push(clone(pick(row,['version','content','updatedAt','sources','fileResource'])));
+   row.revisions??=[{messageId:row.messageId||null,version:1}];
+   if(p.messageId)row.revisions.push({messageId:p.messageId,version:nextVersion});
+   Object.assign(row,{content,sources,version:nextVersion,updatedAt:now(),fileResource:{format:'Markdown',mimeType:'text/markdown;charset=utf-8',savedAt:now(),version:nextVersion}});
+   return {report:row,reportId:row.id};
   }
   require(false,'未知操作');
  }
@@ -149,30 +167,56 @@
   const session=find(s.sessions,p.id);version(session,p);const question=text(p,'text'),context=session.context;
   const named=s.items.filter(item=>question.includes(item.title)),explicit=areaIds(question),contextItem=context.itemId?s.items.find(x=>x.id===context.itemId):null;
   const weekly=assistantPage&&/上周/.test(question)&&/运营|周报|简报|报告|事项|事件/.test(question);
-  const places=[[/九华街/,'jiuhua'],[/天台/,'tiantai'],[/入口服务区/,'road'],[/花台/,'cable'],[/百岁宫/,'rail'],[/游客中心/,'clean']].filter(([pattern])=>pattern.test(question)).map(([,key])=>key);
+  const daily=assistantPage&&!weekly&&/(?:全园|景区|运营)?日报/.test(question);
+  const comparisonIntent=assistantPage&&/(?:对比|比较|排名|最多)/.test(question);
+  const reasonIntent=assistantPage&&/(?:原因|为什么|为何|成因|怎么回事)/.test(question);
+  const progressIntent=assistantPage&&/(?:进展|进度|当前阶段|处理到哪)/.test(question);
+  const places=[[/九华街/,'jiuhua'],[/天台/,'tiantai'],[/入口/,'road'],[/花台/,'cable'],[/百岁宫/,'rail'],[/游客中心/,'clean']].filter(([pattern])=>pattern.test(question)).map(([,key])=>key);
   const areaScope=assistantPage&&places.length?places:explicit;
-  const observation=assistantPage&&/客流|在园人数|运营/.test(question)&&!contextItem;
-  const words=((assistantPage?'整个景区 景区 整个 上周 周报 运营 客流 在园人数 九华街片区 花台景区 花台游览区 天台游览区 天台景区 百岁宫景点 入口服务区 片区 九华街 天台 游览区 对比 快照 一份 怎么样 如何 及其 并 ':'')+'退回补充 补充退回 误报 终止 重复 合并 生成 整理 报告 简报 今日 今天 九华山 全园 全部 本地 示例 当前 现在 事项 事件 状态 进度 进展 责任 负责 谁 人员 下一步 接下来 怎么处理 该做什么 依据 证据 来源 记录 建议 分析 原因 为何 为什么 统计 数量 多少 几项 几起 待处理 待核查 待安排核查 等待核查反馈 待人工决策 待安排处置 等待处置反馈 处理中 待复核 已结束 已归档 未结束 历史事件 历史事项 概况 清单 列表 分布 汇总 总结 查看 查询 告诉 给我 请 我 我们 这个 这些 这项 一下 什么 怎么 哪些 有 的 吗 呢 和 与 及 是 在 情况 处理 办理 现场 复核 核查 核实 反馈 材料 结果 要 看 重点 这起 到 哪一步 了').split(' ').concat(Object.values(aliases).flat(),s.items.map(x=>x.title));
+  const observation=assistantPage&&/客流|在园人数|运营|片区人数/.test(question)&&!contextItem;
+  const reportCandidate=p.reportId?s.reports.find(report=>report.id===p.reportId&&(!report.sessionId||report.sessionId===session.id)):null;
+  const revisionCommand=reportCandidate&&(/(?:精简|缩短|压缩).*(?:摘要|报告)|(?:补充|增加|更新|修改).*(?:处置|进度|进展|报告|摘要)|(?:处置|进度|进展|报告|摘要).*(?:补充|增加|更新|修改)/.test(question))?(/(?:精简|缩短|压缩)/.test(question)?'shorten-summary':'append-progress'):null;
+  const revisionReport=revisionCommand?reportCandidate:null;
+  const words=((assistantPage?'整个景区 景区 整个 上周 周报 运营 日报 客流 在园人数 九华街片区 花台景区 花台游览区 天台游览区 天台景区 百岁宫景点 入口服务区 片区 九华街 天台 游览区 对比 比较 快照 一份 怎么样 如何 及其 并 人数最多 排名 最多 哪个 同一时点 同一 时间 趋势 变化 入园总量 停车空位 入口排队 原因 成因 为什么 为何 怎么回事 可能 造成 增加 上升 证实 确认 已确认 已经 现象 现场范围 队尾 弯道 通道 吨 位 于 分别 说明 依据 责任组 当前阶段 处置 处理进度 进度 进展 到哪一步 记录 反馈 待核实 不能确认 不能确定 摘要 精简 缩短 压缩 补充 更新 修改 保留 部分 阶段责任责任人 版本 报告日报 周报':'')+'退回补充 补充退回 误报 终止 重复 合并 生成 整理 报告 简报 今日 今天 九华山 全园 全部 本地 当前 现在 事项 事件 状态 进度 进展 责任 负责 谁 人员 下一步 接下来 怎么处理 该做什么 依据 证据 来源 记录 建议 分析 原因 为何 为什么 统计 数量 多少 几项 几起 待处理 待核查 待安排核查 等待核查反馈 待人工决策 待安排处置 等待处置反馈 处理中 待复核 已结束 已归档 未结束 历史事件 历史事项 概况 清单 列表 分布 汇总 总结 查看 查询 告诉 给我 请 我 我们 这个 这些 这项 一下 什么 怎么 哪些 有 的 吗 呢 和 与 及 是 在 情况 处理 办理 现场 复核 核查 核实 反馈 材料 结果 要 看 重点 这起 到 哪一步 了').split(' ').concat(Object.values(aliases).flat(),s.items.map(x=>x.title));
   let remainder=question;for(const word of words.sort((a,b)=>b.length-a.length))remainder=remainder.split(word).join('');remainder=remainder.replace(/[\s，。！？、：:,.!?；;（）()]+/g,'');
   const timeRequested=(!weekly&&/上周/.test(question))||/昨天|昨日|明天|本周|本月|去年|\d{2,4}[-年月日/:]/.test(question)||![undefined,null,'','today','今天','今日',now().slice(0,10)].includes(context.date);
   const conflict=!!(contextItem&&((named.length&&!named.some(x=>x.id===contextItem.id))||(!named.length&&explicit.length&&(explicit.length!==1||explicit[0]!==(contextItem.businessType||contextItem.id)))));
   const unknownArea=![undefined,null,'','九华山','全园','全部','全部可见'].includes(context.area)&&!areaIds(context.area).length;
-  const unsupported=!!(remainder||timeRequested||conflict||unknownArea||(weekly&&!!contextItem));
+  const unsupported=!!(remainder||timeRequested||conflict||unknownArea||(weekly&&!!contextItem))&&!revisionReport;
   const falseClosure=/误报|终止/.test(question),merged=/重复|合并/.test(question),returned=/退回.*补充|补充.*退回/.test(question);
   const closed=falseClosure||merged||/已结束|已归档|历史事件|历史事项/.test(question),filter=falseClosure?x=>x.phase==='closed'&&x.resolution==='误报终止':merged?x=>x.phase==='closed'&&x.resolution==='重复合并':returned?x=>x.phase==='feedback'&&x.records.filter(r=>['退回补充','登记处置反馈'].includes(r[1])).at(-1)?.[1]==='退回补充':closed?x=>x.phase==='closed':/待复核/.test(question)?x=>x.phase==='review':/等待核查反馈/.test(question)?x=>x.phase==='verify_feedback':/待安排核查/.test(question)?x=>x.phase==='verify':/待核查/.test(question)?x=>x.stage===1:/待人工决策/.test(question)?x=>x.phase==='decision':/待安排处置/.test(question)?x=>x.phase==='assign':/等待处置反馈/.test(question)?x=>x.phase==='feedback':/处理中/.test(question)?x=>x.stage===2:/未结束|待处理/.test(question)?x=>x.phase!=='closed':null;
   let rows;
-  if(weekly)rows=s.items.filter(x=>datedInWeek(x)&&(!areaScope.length||areaScope.includes(x.businessType||x.id))&&(!named.length||named.includes(x)));else if(contextItem)rows=[contextItem];else if(named.length)rows=named;else if(areaScope.length)rows=s.items.filter(x=>areaScope.includes(x.businessType||x.id)&&(closed||!x.sample));else if(filter||/全园|全部/.test(question))rows=s.items;else if(areaIds(context.area).length)rows=s.items.filter(x=>areaIds(context.area).includes(x.businessType||x.id)&&!x.sample);else if(Array.isArray(session.queryItemIds))rows=session.queryItemIds.map(key=>find(s.items,key));else rows=s.items;
+  if(revisionReport)rows=revisionReport.sources.map(ref=>s.items.find(item=>item.id===ref.id)).filter(Boolean);else if(weekly)rows=s.items.filter(x=>datedInWeek(x)&&(!areaScope.length||areaScope.includes(x.businessType||x.id))&&(!named.length||named.includes(x)));else if(daily)rows=s.items.filter(x=>x.phase!=='closed'&&!x.sample&&(!areaScope.length||areaScope.includes(x.businessType||x.id)));else if(contextItem)rows=[contextItem];else if(named.length)rows=named;else if(areaScope.length)rows=s.items.filter(x=>areaScope.includes(x.businessType||x.id)&&(closed||!x.sample));else if(filter||/全园|全部/.test(question))rows=s.items;else if(areaIds(context.area).length)rows=s.items.filter(x=>areaIds(context.area).includes(x.businessType||x.id)&&!x.sample);else if(Array.isArray(session.queryItemIds))rows=session.queryItemIds.map(key=>find(s.items,key));else rows=s.items;
   if(filter)rows=rows.filter(filter);
-  const intent=weekly||observation?'statistics':/处理记录|办理记录/.test(question)?'records':/依据|证据|来源|材料/.test(question)?'evidence':/建议|分析|原因|为何|为什么|怎么处理|下一步|接下来|该做什么|复核.*(?:看|重点)/.test(question)?'advice':/清单|列表|哪些/.test(question)?'list':/统计|数量|多少|几项|几起|分布|概况|汇总|总结|报告|简报/.test(question)?'statistics':'progress';
-  const operations=!unsupported&&(weekly||observation)?operationsData(rows,areaScope,weekly):null;
-  const followups=operations?.weekly?s.items.filter(x=>!x.sample&&x.phase!=='closed'&&(!areaScope.length||areaScope.includes(x.businessType||x.id))):[];
+  const intent=revisionReport?'report_revision':weekly?'statistics':comparisonIntent?'comparison':reasonIntent?'reason':/处理记录|办理记录/.test(question)?'records':/依据|证据|来源|材料/.test(question)?'evidence':/建议|分析|怎么处理|下一步|接下来|该做什么|复核.*(?:看|重点)/.test(question)?'advice':/清单|列表|哪些/.test(question)?'list':daily||observation?'statistics':/统计|数量|多少|几项|几起|分布|概况|汇总|总结|报告|简报/.test(question)?'statistics':progressIntent?'progress':'progress';
+  const operations=!unsupported&&(weekly||daily||observation||comparisonIntent)?operationsData(rows,areaScope,weekly):null;
+  const followups=(operations?.weekly||daily)?s.items.filter(x=>!x.sample&&x.phase!=='closed'&&(!areaScope.length||areaScope.includes(x.businessType||x.id))):[];
+  if(daily&&operations){const date=SNAPSHOT.capturedAt.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);const reportDate=date?`${date[1]}-${String(date[2]).padStart(2,'0')}-${String(date[3]).padStart(2,'0')}`:'';operations.currentAsOf=latestUpdated(followups);operations.daily={date:reportDate,items:s.items.filter(item=>item.createdAt?.slice(0,10)===reportDate).map(eventCard)};}
+  if(operations?.weekly)operations.currentAsOf=latestUpdated(followups);
   const referencedItems=['evidence','advice'].includes(intent)?rows.filter(x=>x.phase==='closed'&&x.duplicateOf).map(x=>s.items.find(main=>main.id===x.duplicateOf)).filter(Boolean):[];
-  let sources=[...new Map([...rows,...referencedItems,...followups].map(x=>[x.id,pick(x,['id','title','version','phase','location'])])).values()],answer;
+  let sources=[...new Map((revisionReport?revisionReport.sources:[...rows,...referencedItems,...followups]).map(x=>[x.id,pick(x,['id','title','version','phase','location'])])).values()],answer;
   if(unsupported){answer=conflict?'当前会话绑定其他事项，请新建会话或移除当前事项范围后查询；本次未切换对象。':'当前未找到该问题对应的数据。可查询已有事项的进度、处理记录、复核依据、下一步或状态清单；例如“待复核事项有哪些”。本次未更新查询范围。';sources=[]}
+  else if(revisionReport)answer=revisionCommand==='shorten-summary'?'已按当前报告中的统计结论精简摘要；其他章节、来源和版本记录保持独立。':'已读取报告所引用事项的最新阶段与处理记录，准备补入新的处置进展版本。';
   else if(operations?.weekly){
    const {eventCount,outcomes}=operations.weekly;
    answer=`${WEEK_LABEL}共检索到 ${eventCount} 条有上报日期的事项。正常完成 ${outcomes.normal} 起，误报终止 ${outcomes.false} 起，重复合并 ${outcomes.duplicate} 起${outcomes.pending?'，尚未结束 '+outcomes.pending+' 起':''}。
 暂无周度客流和停车序列。下方展示当期观测和当前待跟进事项。`;
+  }
+  else if(intent==='comparison'&&operations?.snapshot){
+   const ranked=operations.snapshot.areas.slice().sort((a,b)=>b.people-a.people),top=ranked[0];
+   answer=`${operations.snapshot.capturedAt}同一时点，${ranked.map(row=>`${row.name} ${row.people.toLocaleString('zh-CN')} 人`).join('、')}。${top?`${top.name}人数最多。`:''}这只反映各片区在园人数，不直接说明拥堵或风险。`;
+  }
+  else if(intent==='reason'&&rows.length){
+   const item=rows[0],series=observationSeries(item),first=series[0],last=series.at(-1),delta=first&&last?last.value-first.value:null;
+   const fact=first&&last?`${first.time}—${last.time}，${item.location}记录由${first.value}${first.unit}增至${last.value}${last.unit}（增加${delta}${last.unit}）。`:`已有记录：${itemTimeline(item).at(-1)?.text||item.summary}`;
+   answer=`${item.title}：${fact}现有记录未确认成因，队尾范围、弯道通行和主入园通道情况仍待现场核查。不能据此认定停车或全园客流造成拥堵。`;
+  }
+  else if(intent==='progress'&&rows.length){
+   answer=rows.map(item=>{const series=observationSeries(item),first=series.at(-2),last=series.at(-1),movement=first&&last?`${first.time}—${last.time}，记录由${first.value}${first.unit}变为${last.value}${last.unit}；`:'',latest=itemTimeline(item).at(-1);return `${item.title}目前${PHASES[item.phase]}，责任：${item.owner||'尚未指定'}。${movement}${latest?.title||''}。下一步：${item.waitingFor}；${item.next||''}`}).join('\n');
+  }
+  else if(daily&&operations?.snapshot){
+   const snapshot=operations.snapshot,traffic=snapshot.traffic,followupCount=followups.length;
+   answer=`运营观测采集于${snapshot.capturedAt}：全园在园 ${snapshot.totalPeople.toLocaleString('zh-CN')} 人${traffic?`，入口排队 ${traffic.queueVehicles} 辆，预计等待 ${traffic.waitMinutes} 分钟`:''}。当前事项记录更新时间截至 ${operations.currentAsOf||'未提供'}，有 ${followupCount} 条未结束事项；两种时间口径分开展示，单点观测不代表全天趋势。`;
   }
   else if(operations?.snapshot){
    answer=`${operations.snapshot.capturedAt}，所选片区合计在园 ${operations.snapshot.totalPeople.toLocaleString('zh-CN')} 人。当前事项共 ${rows.length} 起，详情见下方。`;
@@ -185,38 +229,67 @@
   else answer=rows.map(x=>x.title+'：'+PHASES[x.phase]+(x.phase==='closed'?' · '+(x.resolution||'已结束'):'。责任：'+(x.owner||'尚未指定'))+'。'+(intent==='progress'?x.waitingFor:'')).join('\n');
   if(!unsupported)session.queryItemIds=rows.map(x=>x.id);session.lastQueryStatus=unsupported?'unsupported':'success';
   if(!unsupported&&/今日|今天/.test(question))answer+='\n统计覆盖当前可查询的事项记录。';
-  const result={id:id(),question,answer,sources,unsupported,status:session.lastQueryStatus,kind:intent,time:now(),
+  const result={id:id(),question,answer,sources,unsupported,status:session.lastQueryStatus,kind:intent,time:now(),reportRevision:revisionReport?{reportId:revisionReport.id,command:revisionCommand}:undefined,
    metrics:unsupported||intent!=='statistics'?[]:['待核查','处理中','待复核','已结束'].map((label,index)=>({label,value:rows.filter(x=>x.stage===index+1).length})),
    itemSnapshots:unsupported?[]:clone(rows),referenceSnapshots:unsupported?[]:clone([...referencedItems,...followups]),scopeLabel:operations?.periodLabel||'事项处理记录'};
   if(!unsupported){
    if(operations)result.operations=operations;
+   if(intent==='comparison')result.comparison={capturedAt:operations.snapshot?.capturedAt||'',areas:operations.snapshot?.areas||[],unit:'人'};
+   if(intent==='reason'&&rows.length){const item=rows[0],series=observationSeries(item),first=series[0],last=series.at(-1);result.analysis={title:'已确认现象与待核实原因',scope:item.location,facts:series.length?[`${series.map(point=>point.time+' '+point.value+point.unit).join('、')}。`]:[item.summary],series,unit:series[0]?.unit||'人',unknown:'现有记录尚不能确认成因；'+(item.reason||'需要现场核查后再判断。'),next:item.processRecords?.at(-1)?.text||item.next};}
+   if(intent==='progress')result.progress=rows.map(item=>eventCard(item));
    if(weekly)result.workflow=[
     {label:'确定统计口径',detail:WEEK_LABEL+' · 按首次上报日期统计'},
     {label:'读取对应事项',detail:'找到 '+rows.length+' 条期间内事项'},
     {label:'核对片区与结束结果',detail:'区分正常完成、误报终止和重复合并'},
     {label:'整理可引用的分析',detail:'保存事项版本、观测时点和当前待跟进记录'}
    ];
-   if(assistantPage)result.events=(weekly?followups:rows).map(eventCard);
+   else if(daily)result.workflow=[
+    {label:'确定日报日期与范围',detail:'采用现有运营观测的日期，不替换为报告生成日期'},
+    {label:'读取客流、交通与停车快照',detail:operations.snapshot?.capturedAt||'该观测时点未提供'},
+    {label:'分开展示当日记录与当前待跟进事项',detail:'当前记录时点：'+(operations.currentAsOf||'未记录')},
+    {label:'标记数据缺口并保存来源',detail:'无全天客流序列时不生成趋势'}
+   ];
+   else if(intent==='comparison')result.workflow=[
+    {label:'确认片区范围',detail:(operations.snapshot?.areas||[]).map(row=>row.name).join('、')||'请求的片区'},
+    {label:'读取同一时点客流',detail:operations.snapshot?.capturedAt||'未找到对应观测'},
+    {label:'按在园人数排序',detail:'只比较数量，不推断拥堵或风险'},
+    {label:'附上数据口径与来源',detail:'单位：人 · 运营观测记录'}
+   ];
+   else if(intent==='reason'&&rows.length)result.workflow=[
+    {label:'确定分析对象',detail:rows[0].location},
+    {label:'提取已记录的观测序列',detail:'仅覆盖该监测点的记录范围'},
+    {label:'区分现象与原因',detail:'没有现场核查结论，不认定拥堵成因'},
+    {label:'整理待核查范围',detail:rows[0].next}
+   ];
+   else if(intent==='progress'&&rows.length)result.workflow=[
+    {label:'定位当前事项',detail:rows.length+' 条相关记录'},
+    {label:'核对当前阶段与责任',detail:rows.map(row=>`${row.title} · ${PHASES[row.phase]}`).join('；')},
+    {label:'整理最近处理记录与材料',detail:'按记录时间合并处理记录和现场材料'},
+    {label:'给出当前下一步',detail:rows.map(row=>row.waitingFor).join('；')}
+   ];
+   if(assistantPage)result.events=(weekly?followups:daily?followups:rows).map(eventCard);
   }
   session.messages.push({id:id(),role:'user',text:question,time:now()},{...result,role:'assistant',text:answer});session.version++;if(session.messages.length===2)session.title=question.slice(0,24);return {message:result,session,sessionId:session.id};
  }
  function report(s,p){
   let context={},session=null,source=null;require(!p.messageId||p.sessionId,'引用回答需要所属会话');
-  if(p.sessionId){session=find(s.sessions,p.sessionId);context=session.context;if(p.messageId){source=find(session.messages,p.messageId);require(source.role==='assistant'&&!source.unsupported&&(source.itemSnapshots?.length||source.operations?.weekly),'该回答没有可用的已保存查询快照，请重新查询',409)}else require(session.lastQueryStatus!=='unsupported','最近问题的范围或能力不受支持，请先明确范围并成功查询',409)}
+  if(p.sessionId){session=find(s.sessions,p.sessionId);context=session.context;if(p.messageId){source=find(session.messages,p.messageId);require(source.role==='assistant'&&!source.unsupported&&(source.itemSnapshots?.length||source.operations?.weekly||source.operations?.snapshot),'该回答没有可用的已保存查询快照，请重新查询',409)}else require(session.lastQueryStatus!=='unsupported','最近问题的范围或能力不受支持，请先明确范围并成功查询',409)}
+  const existing=source?s.reports.find(row=>row.sessionId===p.sessionId&&row.messageId===source.id):null;
+  if(existing)return {report:existing,reportId:existing.id,reused:true};
   const dates=[undefined,null,'','today','今天','今日',now().slice(0,10)];require(dates.includes(p.date)&&dates.includes(context.date),'缺少该日期的可核验数据，不能生成报告',409);require(!p.area||['九华山','全园','全部'].includes(p.area),'报告范围未识别',409);
   const area=context.area||'';require(['','九华山','全园','全部','全部可见'].includes(area)||areaIds(area).length,'报告范围未识别',409);
   const itemId=p.itemId||context.itemId,selected=itemId?[itemId]:Array.isArray(session?.queryItemIds)?session.queryItemIds:areaIds(area).length?areaIds(area):s.items.map(x=>x.id),rows=source?source.itemSnapshots:selected.map(key=>find(s.items,key));
   require(rows.length||source?.operations?.weekly,'当前查询范围没有事项，不能生成报告',409);
   const cell=value=>String(value).replaceAll('&','&amp;').replaceAll('|','&#124;').replaceAll('\r','&#13;').replaceAll('\n','&#10;');
+  const markdownTable=(headers,values)=>['| '+headers.map(cell).join(' | ')+' |','| '+headers.map(()=> '---').join(' | ')+' |',...values.map(row=>'| '+row.map(cell).join(' | ')+' |')].join('\n');
   const table='| 事项 | 状态 | 责任 |\n| --- | --- | --- |\n'+rows.map(x=>'| '+[x.title,PHASES[x.phase],x.owner||'未指定责任'].map(cell).join(' | ')+' |').join('\n');
   let content='一、范围与来源\n引用事项处理记录。生成于 '+now()+'。\n\n二、事项进展\n'+table+'\n\n三、建议与缺口\n建议按当前事项阶段核查、跟进及复核。按事项记录核实影响范围和处置结果。';
   let title=p.title||'景区事项进展报告';
   if(source?.operations?.weekly){
    const {periodLabel,weekly,snapshot}=source.operations;
    const outcomes=weekly.outcomes;
-   const markdownTable=(headers,values)=>['| '+headers.join(' | ')+' |','| '+headers.map(()=> '---').join(' | ')+' |',...values.map(row=>'| '+row.map(cell).join(' | ')+' |')].join('\n');
    title=p.title||'九华山景区运营周报';
-   content=`一、统计范围\n${periodLabel}（北京时间）。按首次上报日期纳入事项，来源为事项处理记录。\n\n二、事件处理概况\n本期有 ${weekly.eventCount} 条事项记录，正常完成 ${outcomes.normal} 起、误报终止 ${outcomes.false} 起、重复合并 ${outcomes.duplicate} 起、尚未结束 ${outcomes.pending} 起。\n`+
+   content=`## 统计范围\n${periodLabel}（北京时间）。按首次上报日期纳入有日期记录的事项，不把当前在办事项计入本期。\n\n## 事件处理概况\n本期有 ${weekly.eventCount} 条事项记录，正常完成 ${outcomes.normal} 起、误报终止 ${outcomes.false} 起、重复合并 ${outcomes.duplicate} 起、尚未结束 ${outcomes.pending} 起。不同结束结果分别列示，不将误报终止或重复合并描述为现场问题已解决。\n`+
     markdownTable(['片区','事项数'],weekly.areas.map(row=>[row.name,row.count]))+'\n\n三、周内事件清单\n'+
     markdownTable(['上报日期','片区','事项','结果'],rows.map(row=>[row.createdAt.slice(0,10),siteOf(row),row.title,row.resolution||PHASES[row.phase]]))+
     '\n\n四、客流与交通观测\n暂无周度客流、停车序列。';
@@ -224,10 +297,27 @@
     content+='\n'+snapshot.capturedAt+'，所列片区在园 '+snapshot.totalPeople.toLocaleString('zh-CN')+' 人。\n'+markdownTable(['片区','在园人数（人）'],snapshot.areas.map(row=>[row.name,row.people]));
     if(snapshot.traffic)content+=`\n同一时点，入口排队 ${snapshot.traffic.queueVehicles} 辆、预计等待 ${snapshot.traffic.waitMinutes} 分钟，停车空位 ${snapshot.parking.available} / ${snapshot.parking.total} 个。`;
    }
-   content+='\n\n五、当前待跟进\n'+(source.events?.length?markdownTable(['事项','阶段','下一步'],source.events.map(row=>[row.title,row.status,row.nextAction])):'暂无未结束事项。');
+   content+='\n\n## 当前待跟进（另列当前记录）\n事项阶段截至：'+(source.operations.currentAsOf||'记录未提供更新时间')+'。这部分不计入周内发生数。\n'+(source.events?.length?markdownTable(['事项','阶段','责任','下一步'],source.events.map(row=>[row.title,row.status,row.owner||'未指定',row.nextAction])):'暂无未结束事项。');
+  }else if(p.template==='daily'&&source?.operations?.snapshot){
+   const snapshot=source.operations.snapshot,traffic=snapshot.traffic,parking=snapshot.parking,asOf=source.operations.currentAsOf||'记录未提供更新时间',day=source.operations.daily?.date||'';
+   const dailyEvents=source.operations.daily?.items||[];
+   title=p.title||`全园运营日报（${day||'日期未记录'}）`;
+   const active=source.events||[];
+   const headline=`运营观测采集于${snapshot.capturedAt}：全园在园 ${snapshot.totalPeople.toLocaleString('zh-CN')} 人。当前事项记录最新更新时间为${asOf}，有 ${active.length} 条未结束事项；两个时间口径分开呈现。`;
+   content=`## 运行摘要\n${headline}\n\n## 关键指标\n`+
+    markdownTable(['指标','数值','观测时点'],[
+     ['全园在园人数',snapshot.totalPeople.toLocaleString('zh-CN')+' 人',snapshot.capturedAt],
+     ...(traffic?[['入口排队',traffic.queueVehicles+' 辆',snapshot.capturedAt],['预计等待',traffic.waitMinutes+' 分钟',snapshot.capturedAt],['接驳车辆',traffic.shuttleVehicles+' 辆',snapshot.capturedAt]]:[]),
+     ...(parking?[['停车空位',parking.available+' / '+parking.total+' 个',snapshot.capturedAt],['停车占用率',parking.occupancy+'%',snapshot.capturedAt]]:[]),
+     ['全日入园累计','当前数据未提供','—']
+    ])+
+    `\n\n## 客流变化\n当前可用记录只有 ${snapshot.capturedAt} 的单点在园人数，无法形成全天趋势，也不推算缺失时段。\n\n## ${day||'观测日期'} 事项记录\n`+
+    (dailyEvents.length?markdownTable(['日期','事项','结束结果'],dailyEvents.map(row=>[row.createdAt?.slice(0,10)||day,row.title,row.resolution||row.status])):'该观测日期未找到带完整日期的事项记录。')+
+    '\n\n## 重点关注\n'+(active.length?markdownTable(['事项','当前阶段','责任','下一步'],active.map(row=>[row.title,row.status,row.owner||'未指定',row.nextAction||row.waitingFor||'待核实'])):'当前范围未找到未结束事项。')+
+    '\n\n## 数据来源与限制\n运营观测来自浏览器中的本地快照，采集时间见各项指标；事项状态按报告生成时的本地记录汇总，并保留其最新更新时间。该页面不接入实时客流、停车、现场或通知系统。\n全日入园累计和分时客流序列当前未提供；单点观测不能代表全天趋势。';
   }
-  if(source)content+='\n\n'+(source.operations?.weekly?'六':'四')+'、引用快照\n回答快照时间：'+source.time+'。采用该回答保存的事项版本，后续业务变化不改写本报告。';
-  const result={id:id(),title,content,status:'草稿',version:1,history:[],sources:[...new Map([...rows,...(source?.referenceSnapshots||[])].map(x=>[x.id,pick(x,['id','title','version'])])).values()],sessionId:p.sessionId,messageId:p.messageId,snapshotAt:source?source.time:now(),createdAt:now(),updatedAt:now()};s.reports.unshift(result);return {report:result,reportId:result.id};
+  if(source)content+='\n\n## 引用快照\n回答快照时间：'+source.time+'。本报告采用该回答保存的事项版本；后续业务变化不改写已保存正文。';
+  const created=now(),result={id:id(),title,content,status:'草稿',version:1,history:[],revisions:[{messageId:p.messageId||null,version:1}],fileResource:{format:'Markdown',mimeType:'text/markdown;charset=utf-8',savedAt:created,version:1},sources:[...new Map([...rows,...(source?.referenceSnapshots||[])].map(x=>[x.id,pick(x,['id','title','version'])])).values()],sessionId:p.sessionId,messageId:p.messageId,snapshotAt:source?source.time:created,createdAt:created,updatedAt:created};s.reports.unshift(result);return {report:result,reportId:result.id};
  }
  let opening,seedPromise;
  const seed=()=>seedPromise??=(async()=>{const response=await fetch(new URL('browser-seed.json',document.baseURI));require(response.ok,'体验初始数据读取失败，请刷新重试',503);const value=await response.json();return value.state||value})().catch(error=>{seedPromise=null;throw error});
