@@ -314,3 +314,34 @@ body:has(.assistant-shell){overflow:hidden}
  #report-reader .reader-toolbar{flex-wrap:wrap}
 }
 @media(prefers-reduced-motion:reduce){.assistant-shell *,#chat-view *{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* Keep each user message on the right of its conversation column. */
+.conversation>.question{flex-direction:row;justify-content:flex-end}
+.assistant-followups{margin-top:18px}
+.assistant-followups h4{margin:0 0 8px;font-size:14px}
+.assistant-followups button{margin:0 8px 8px 0;padding:6px 10px;border:1px solid #dce3ef;border-radius:8px;background:#f1f4fa;color:#35425c;cursor:pointer}
+
+.assistant-nav .history-search,.report-filter{background:#FAFBFE;border-color:#DCE3EF;color:#202B48}
+#chat-view:not(.is-new) .composer{padding-block:8px;margin-block:6px 12px}
+#chat-view:not(.is-new) .composer textarea{display:block;box-sizing:border-box;min-height:30px;height:30px;max-height:96px;padding:4px 0;resize:none;field-sizing:content}
+#chat-view:not(.is-new) .composer-bottom .send{min-height:30px}
+.assistant-chart-columns:not([hidden]){display:grid;grid-auto-columns:minmax(0,1fr);grid-auto-flow:column;align-items:end;gap:10px;padding:12px 8px}
+.assistant-chart-columns .bar-row{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto 76px auto;gap:4px;text-align:center;margin:0}
+.assistant-chart-columns .bar-row>span{grid-row:3;overflow-wrap:anywhere}
+.assistant-chart-columns .bar-row>b{grid-row:1;text-align:center}
+.assistant-chart-columns .bar-track{grid-row:2;height:100%;width:20px;justify-self:center;display:flex;align-items:end;background:#E9EEF7}
+.assistant-chart-columns .bar-track>i{width:100%!important;height:var(--bar-height);background:#4F62FF}
+.assistant-chart-trend canvas{display:block;width:100%;height:auto}
+.report-divider{display:none}
+.assistant-shell.has-report .source-panel{position:relative;overflow:visible}
+.assistant-shell.has-report .report-divider{display:block;position:absolute;inset:0 auto 0 -6px;width:12px;cursor:col-resize;touch-action:none;z-index:10}
+.report-divider:hover,.report-divider:focus-visible{background:#4F62FF44}
+@media(min-width:1101px){
+ .assistant-shell.has-report{grid-template-columns:230px minmax(0,1fr) clamp(280px,var(--report-width,420px),calc(100% - 530px))}
+ .assistant-shell.has-report .source-panel{width:auto}
+}
+@media(max-width:1100px){
+ .assistant-shell.has-report .source-panel{position:absolute;width:clamp(280px,var(--report-width,440px),calc(100% - 64px))}
+}
+
+.assistant-nav .new-chat{flex-shrink:0}
