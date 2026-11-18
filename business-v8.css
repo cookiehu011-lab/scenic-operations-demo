@@ -323,3 +323,24 @@
 
 .business-page .archive-result[data-result="neutral"]{background:#f3f5fa;border-color:#dfe5ef;color:#52627b}
 .business-page .archive-drawer .archive-result[data-result="neutral"]>h2{color:#42536e}
+
+.stage-evidence-group{margin-top:14px;padding:10px 0;border-top:1px solid #dce3ef}
+.stage-evidence-group>summary{cursor:pointer;font-weight:600;color:#344d7b}
+.assignee-picker{position:relative}
+.business-page .assignee-picker .assignee-trigger{display:flex;justify-content:space-between;align-items:center;width:100%;margin-top:5px;padding:8px 10px;border:1px solid #c7d5ef;border-radius:6px;background:#fff;color:#263857;text-align:left}
+.assignee-trigger::after{content:'⌄';margin-left:8px}
+.business-page .assignee-picker .assignee-trigger[data-placeholder=true]{color:#68758d}
+.assignee-options:not([hidden]){position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:15;display:grid;max-height:180px;overflow:auto;padding:4px;border:1px solid #c7d5ef;border-radius:6px;background:#fff;box-shadow:0 8px 22px #20355624}
+.business-page .assignee-picker .assignee-options button{width:100%;padding:8px;text-align:left;border:0;border-radius:4px;background:#fff;color:#263857}
+.business-page .assignee-picker .assignee-options button:is(:hover,:focus-visible,[aria-pressed=true]){background:#edf1ff}
+
+.business-page .stage-material-rows{margin:16px 0 0;border-top:1px solid #dce3ef;padding-top:12px}
+.business-page .stage-material-rows .stage-material-disclosure{margin:0;border-bottom:1px solid #e9edf5}
+.business-page .stage-material-rows .stage-material-disclosure:last-child{border-bottom:0}
+.business-page .stage-material-rows .stage-material-disclosure>button{width:100%;max-width:none;min-height:50px;padding:8px 12px;border:0;border-radius:6px;background:transparent;text-align:left}
+.business-page .stage-material-rows .stage-material-disclosure>button::after{content:none}
+.business-page .stage-material-rows .stage-material-disclosure>button:hover,.business-page .stage-material-rows .stage-material-disclosure>button[aria-expanded=true]{background:#f1f4fc}
+.business-page .stage-material-rows .stage-material-card-body small{white-space:normal}
+.business-page .stage-material-rows .stage-material-open{color:#4059b3;font-size:12px}
+.business-page .stage-material-rows .stage-material-inline{margin:0 12px 10px;padding:10px 0;border:0;background:transparent}
+.stage-review-overview{margin-top:18px;padding-top:14px;border-top:1px solid #dce3ef}

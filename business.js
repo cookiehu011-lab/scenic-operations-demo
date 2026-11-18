@@ -231,7 +231,7 @@ function renderItem(item) {
   const actionLabel = ['','核查安排','跟进安排','复核安排'][item.stage];
   get('review-button').firstChild.textContent = '预览' + actionLabel + ' ';
   get('assignee-label').textContent = ['','现场核查人员','处置跟进人员','结果复核人员'][item.stage];
-  get('assignee').replaceChildren(new Option('请选择人员',''), ...item.people.map(person => new Option(person)));
+  get('assignee').replaceChildren(new Option('',''), ...item.people.map(person => new Option(person)));
   get('note').placeholder = item.placeholder;
   get('assignee').value = draft.get(item)[item.phase==='assign'?'disposalPerson':'person']||'';
   get('note').value = draft.get(item)[item.phase==='assign'?'disposalNote':'note']||'';
@@ -246,6 +246,39 @@ function renderItem(item) {
 
 get('assignee').onchange = event => { draft.get(selected)[selected.phase==='assign'?'disposalPerson':'person'] = event.target.value; persistDraft(); };
 get('note').oninput = event => { draft.get(selected)[selected.phase==='assign'?'disposalNote':'note'] = event.target.value; updateAdoption(); persistDraft(); };
+const assignee=get('assignee');
+const assigneePicker=element('div','','assignee-picker');
+const assigneeTrigger=element('button','','assignee-trigger');
+const assigneeOptions=element('div','','assignee-options');
+assigneeOptions.id='assignee-options';assigneeOptions.hidden=true;
+assigneeTrigger.type='button';
+assigneeTrigger.setAttribute('aria-controls',assigneeOptions.id);
+assigneeTrigger.setAttribute('aria-expanded','false');
+assignee.hidden=true;
+assignee.after(assigneePicker);assigneePicker.append(assigneeTrigger,assigneeOptions);
+function showAssigneeOptions(open){
+ assigneeOptions.hidden=!open;
+ assigneeTrigger.setAttribute('aria-expanded',String(open));
+}
+function renderAssignee(){
+ showAssigneeOptions(false);
+ assigneeTrigger.textContent=assignee.value||'请选择人员';
+ assigneeTrigger.dataset.placeholder=String(!assignee.value);
+ assigneeTrigger.setAttribute('aria-label',get('assignee-label').textContent+'：'+assigneeTrigger.textContent);
+ assigneeTrigger.disabled=assignee.disabled;
+ assigneeOptions.replaceChildren(...[...assignee.options].filter(option=>option.value).map(option=>{
+  const button=element('button',option.text);button.type='button';
+  button.setAttribute('aria-pressed',String(option.value===assignee.value));
+  button.onclick=()=>{assignee.value=option.value;assignee.onchange({target:assignee});renderAssignee();assigneeTrigger.focus()};
+  return button;
+ }));
+}
+assigneeTrigger.onclick=()=>{showAssigneeOptions(assigneeOptions.hidden);if(!assigneeOptions.hidden)assigneeOptions.querySelector('button')?.focus()};
+assigneePicker.addEventListener('keydown',event=>{
+ if(event.key==='Escape'&&!assigneeOptions.hidden){event.stopPropagation();showAssigneeOptions(false);assigneeTrigger.focus()}
+});
+assigneePicker.addEventListener('focusout',event=>{if(!assigneePicker.contains(event.relatedTarget))showAssigneeOptions(false)});
+document.addEventListener('pointerdown',event=>{if(!assigneePicker.contains(event.target))showAssigneeOptions(false)});
 const dialog = get('preview-dialog');
 get('assignment-form').onsubmit = event => {event.preventDefault();previewAssignment()};
 get('close-dialog').onclick = () => dialog.close();
@@ -433,6 +466,7 @@ function command(label,op,values,primary=false){
 }
 function previewAssignment(){
  if(stagePreview||busy||Product.role!=='operator'||!['verify','assign'].includes(selected.phase))return;
+ if(!assignee.value){Product.notify('请选择现场责任人员或班组。',true);assigneeTrigger.focus();return;}
  if(!get('assignment-form').reportValidity())return;
  const item=selected,isVerification=item.phase==='verify';
  const payload={type:isVerification?'item.verify_assign':'item.assign',id:item.id,version:item.version,owner:get('assignee').value,note:get('note').value};
@@ -467,8 +501,9 @@ function renderActions(){
  const assign=item.phase==='assign',verification=item.phase==='verify',arrange=assign||verification;
  get('assignment-form').hidden=!arrange;get('review-button').hidden=!arrange;
  get('review-button').disabled=stagePreview||busy||Product.role!=='operator';get('review-button').firstChild.textContent=verification?'预览核查安排 ':'预览处置安排 ';
- get('assignee').disabled=busy||!arrange||Product.role!=='operator';get('note').readOnly=busy||Product.role!=='operator';get('assignee').closest('label').hidden=!arrange;get('assignee').required=arrange;
+ get('assignee').disabled=busy||!arrange||Product.role!=='operator';get('note').readOnly=busy||Product.role!=='operator';get('assignee').closest('label').hidden=!arrange;get('assignee').required=false;
  get('assignee-label').textContent=verification?'现场核查人员 / 班组':'现场处置人员 / 班组';
+ renderAssignee();
  const phaseLabels={verify:'安排现场核查',verify_feedback:'等待核查反馈',decision:'人工处置决策',assign:'安排现场处置',feedback:'提交处置反馈',review:'复核处置结果',closed:'已结束'};
  const descriptions={verify:'指定人员核实现场情况和影响范围，并反馈核查依据。',verify_feedback:'登记责任组反馈的现场事实、依据及核查结论。',decision:'结合已登记核查事实，确认景区职责内的处置方案。',assign:'核对处置责任组与要求，预览后确认安排。',feedback:'将已经获得的处置结果和来源登记到本事项。',review:'核对处置反馈与依据，决定通过或退回补充。',closed:'本事项已经结束，原始事实与完整过程保留。'};
  get('action-heading').textContent=phaseLabels[item.phase];find('.action-intro h3').textContent=phaseLabels[item.phase];find('.action-intro h3').hidden=true;find('.action-block > p').textContent=descriptions[item.phase];find('.action-block > p').hidden=item.phase==='feedback';
@@ -505,8 +540,18 @@ function renderActions(){
   renderFeedbackAttachments(item);actionHost.append(source);
   command('提交处置反馈','feedback',()=>({text:note.value,evidence:evidence.value,condition:condition.value,attachments:state.feedbackAttachments.map(({name,type,data})=>({name,type,data}))}),true);
  }else if(item.phase==='review'){
-  const reason=field('复核结论');reason.value=draft.get(item).review||'';reason.oninput=()=>{draft.get(item).review=reason.value;persistDraft()};
-  command('复核通过并结束','review',()=>({approve:true,reason:reason.value}),true);command('退回补充反馈','review',()=>({approve:false,reason:reason.value}));
+  if(Product.role!=='reviewer'){
+   if(!stagePreview&&Product.role!=='viewer'){
+    actionHost.append(element('p','当前为业务人员。复核人员核对反馈后，可通过或退回。','product-record-note'));
+    const changeRole=element('button','切换为复核人员','primary');changeRole.type='button';
+    changeRole.onclick=()=>{persistDraft();remember();const role=find('.product-role select');role.value='reviewer';role.dispatchEvent(new Event('change'))};
+    actionHost.append(changeRole);
+   }
+  }else{
+   const reason=field('复核结论');reason.required=true;reason.placeholder='填写核对结果，或说明需要补充的内容';
+   reason.value=draft.get(item).review||'';reason.oninput=()=>{draft.get(item).review=reason.value;persistDraft()};
+   command('复核通过并结束','review',()=>({approve:true,reason:reason.value}),true);command('退回补充反馈','review',()=>({approve:false,reason:reason.value}));
+  }
  }
 
  updateAdoption();

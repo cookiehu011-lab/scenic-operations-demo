@@ -141,7 +141,7 @@ function renderTopic(){
  document.querySelector('.layer-selector').hidden=!!topic;
  document.querySelector('.map-legend').hidden=!!topic;
  $('map-badge').textContent=topic?topic.map:'空间态势';
- $('video-heading').textContent=parks[state.video]?'停车场现场示意':topic?'关联现场画面':'重点区域视频';
+ $('video-heading').textContent=parks[state.video]?'停车场现场示意':topic?'关联现场画面':'重点区域场景';
  
  if(key==='road')$('video-context').textContent='入口上游道路 · 场景示意，非实时';
  if(key==='parking'||key==='road')document.querySelector('.preview-label').textContent='场景示意 · 非实时';

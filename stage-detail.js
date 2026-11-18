@@ -68,25 +68,58 @@
  function materialList(materials,title){
   if(!materials.length)return null;
   const section=node('section','','stage-material-section');section.append(node('h3',title));
-  for(const material of materials){const body=node('div');body.append(node('p',material.text,'stage-material-fulltext'),node('p',[material.source,formatTime(material.time)].filter(Boolean).join(' · '),'stage-media-note'));const entry=disclosure(material.name,body);entry.firstChild.setAttribute('aria-label','查看材料：'+material.name);savedFiles(entry,material.attachments);section.append(entry)}return section;
+  section.classList.add('stage-material-rows');
+  for(const material of materials){
+   const body=node('div');body.append(node('p',material.text,'stage-material-fulltext'));savedFiles(body,material.attachments);
+   const entry=disclosure(material.name,body),button=entry.firstChild,panel=entry.lastChild;
+   const info=node('span','','stage-material-card-body');
+   const meta=[material.source,material.time&&formatTime(material.time)].filter(Boolean).join(' · ');
+   info.append(node('strong',material.name));if(meta)info.append(node('small',meta));
+   const toggle=node('span','查看','stage-material-open');button.replaceChildren(info,toggle);
+   button.setAttribute('aria-label','查看材料：'+material.name);
+   button.onclick=()=>{
+    const open=panel.hidden;panel.hidden=!open;toggle.textContent=open?'收起':'查看';
+    button.setAttribute('aria-expanded',String(open));button.setAttribute('aria-label',(open?'收起':'查看')+'材料：'+material.name);
+   };
+   section.append(entry);
+  }
+  return section;
  }
  function feedbackOwner(item,action){return item.feedback?.at(-1)?.owner||(/保洁/.test(action[1])?'保洁组（反馈方）':'处置反馈')}
  function renderBusiness(item,host,data){
   const phase=item.phase,facts=phaseFacts(item,phase);
   const heading=node('div','','stage-detail-heading');heading.append(node('h2','事件概况','stage-detail-title'));
-  host.append(heading,node('p',facts.headline,'stage-detail-summary'));if(facts.description)host.append(node('p',facts.description,'stage-description'));
-  const attrs=node('dl','','stage-attributes');for(const [label,value]of [['发生位置',item.location],['发现时刻',item.time],['当前状态',item.status]]){const cell=node('div');cell.append(node('dt',label),node('dd',value));attrs.append(cell)}host.append(attrs);
-  if(phase==='review'){const material=materialList(data.materials,'反馈与复核依据');if(material)host.append(material)}
-  const visual=media(item);if(visual){host.append(node('h2',phase==='review'?'原始现场与数据':'现场与数据','stage-media-heading'),visual)}
+  const overview=phase==='review'?node('section','','stage-review-overview'):host;
+  const report=(item.records||[]).find(row=>/收到|上报/.test(row[1]));
+  overview.append(heading);
+  if(phase==='review'){
+   const incident=report?.[1]?.replace(/^收到/,'').replace(/上报$/,'')||item.title;
+   overview.append(node('p',incident,'stage-detail-summary'));
+   if(report?.[2]&&report[2]!==item.location)overview.append(node('p',report[2],'stage-description'));
+  }else{
+   overview.append(node('p',facts.headline,'stage-detail-summary'));
+   if(facts.description)overview.append(node('p',facts.description,'stage-description'));
+  }
+  const attrs=node('dl','','stage-attributes');for(const [label,value]of [['发生位置',item.location],['发现时刻',item.time],['当前状态',item.status]]){const cell=node('div');cell.append(node('dt',label),node('dd',value));attrs.append(cell)}overview.append(attrs);
+  const visual=media(item);if(visual&&phase!=='review')host.append(node('h2','现场与数据','stage-media-heading'),visual);
   const records=(item.records||[]).filter(row=>row[0]!=='当前'&&!/AI|分析建议/.test(row[1]));
   const action=[...records].reverse().find(row=>/安排|分段放行|处置|清运|反馈|退回|核查有效/.test(row[1]));
   if(action&&phase!=='verify'){
    const section=node('section','','stage-progress');section.append(node('h2',phase==='review'?'处置结果':'处置进展'));
+   if(phase==='review'&&facts.description)section.append(node('p',facts.description,'stage-description'));
    const meta=node('div','','stage-progress-meta'),recordMeta=item.recordMeta?.[item.records.indexOf(action)];
    const owner=recordMeta?.owner||recordMeta?.actor||(/反馈/.test(action[1])?(feedbackOwner(item,action)):(item.assignment?.owner||(phase==='feedback'?item.owner:'')));
-   if(owner)meta.append(person(owner));meta.append(node('time',formatTime(action[0])));section.append(meta,node('p',action[1]+'。'+action[2]));host.append(section);
+   if(owner)meta.append(person(owner));meta.append(node('time',formatTime(action[0])));section.append(meta);if(phase!=='review'||!facts.description)section.append(node('p',action[1]+'。'+action[2]));host.append(section);
   }
-  if(phase!=='review'){const material=materialList(data.materials,phase==='verify'?'来源材料':'相关材料');if(material)host.append(material)}
+  const material=materialList(data.materials,phase==='review'?'反馈与复核依据':phase==='verify'?'核查依据':'相关材料');
+  if(material)host.append(material);
+  if(phase==='review'){
+   if(visual){
+    const details=node('details','','stage-evidence-group');
+    details.append(node('summary','原始现场与数据'),visual);overview.append(details);
+   }
+   host.append(overview);
+  }
  }
  function render(item,options={}){
   const host=options.host||document.getElementById('stage-detail');if(!host)return;
